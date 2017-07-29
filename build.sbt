@@ -1,3 +1,4 @@
+
 name := "Brewery"
 
 version := "1.0"
@@ -25,3 +26,10 @@ javaOptions in run += "-XX:MaxPermSize=128M"
 scalacOptions += "-target:jvm-1.8"
 
 scalacOptions ++= Seq("-unchecked", "-deprecation")
+
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+{
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
+}
