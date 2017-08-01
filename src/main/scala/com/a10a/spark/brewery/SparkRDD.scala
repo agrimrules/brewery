@@ -1,15 +1,21 @@
 package com.a10a.spark.brewery
 
-import org.apache.spark.{SparkConf, SparkContext}
+import com.mongodb.spark._
+import org.apache.spark.sql.SparkSession
 
 
 object SparkRDD {
   def main(args: Array[String]) = {
-      val conf = new SparkConf().setAppName("Brewery").setMaster("spark://192.168.0.200:7077")
-      val sc = new SparkContext(conf)
-      val numbers = 1 to 10
-      val rdd = sc.parallelize(numbers)
-      rdd.foreach(println)
+
+      val sc = SparkSession.builder()
+                  .master("local")
+                  .appName("Brewery")
+                  .config("spark.mongodb.input.uri", "")
+                  .config("spark.mongodb.output.uri", "")
+                  .getOrCreate()
+      val rdds = MongoSpark.load(sc)
+      val lonestar = rdds.filter(ds => ds.getAs("name").toString == "Lonestar")
+      MongoSpark.save(lonestar)
   }
 
 }
