@@ -1,12 +1,13 @@
 package com.a10a.spark.brewery
 
 
+import com.cloudera.sparkts.models.ARIMA
 import com.mongodb.spark._
+import com.mongodb.spark.config.WriteConfig
+import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.concat
 import org.apache.spark.sql.functions.lit
-import com.mongodb.spark.config._
-import org.bson.Document
 
 object SparkRDD {
   def main(args: Array[String]) = {
@@ -27,10 +28,16 @@ object SparkRDD {
       val trimmed = mapped.drop("__v").drop("_id").withColumn("Beer Name", concat(mapped.col("brand"), lit(" "), mapped.col("name")))
         .drop("brand").drop("name")
       val formatted: DataFrame = trimmed.select("ts","Beer Name", "percentage").distinct().sort("ts")
-      formatted.show()
-      val writeConfig = WriteConfig(Map("collection" -> formatted.first().getAs("Beer Name").toString, "writeConcern.w" -> "majority"), Some(WriteConfig(sc)))
-      MongoSpark.save(formatted, writeConfig)
-      // Do machine learning on formatted data
+      formatted.show(5)
+      val input = Vectors.dense(formatted.select("percentage").rdd.map(r => r(0).toString.toDouble).collect())
+      // TODO: Ensure input is not a singular matrix
+      val model = ARIMA.fitModel(1,0,1,input)
+      println("coefficients: "+ model.coefficients.mkString(","))
+      val predictions = model.forecast(input, 48)
+      println(predictions.toArray.toString)
+      //Not saving predictions for now.
+//      val writeConfig = WriteConfig(Map("collection" -> formatted.first().getAs("Beer Name").toString.concat(" Predict"), "writeConcern.w" -> "majority"), Some(WriteConfig(sc)))
+//      MongoSpark.save(formatted, writeConfig)
     })
 
     println("done")
