@@ -1,6 +1,7 @@
 package com.a10a.spark.brewery
 
 
+import breeze.linalg.DenseVector
 import com.cloudera.sparkts.models.ARIMA
 import com.mongodb.spark._
 import com.mongodb.spark.config.WriteConfig
@@ -30,11 +31,16 @@ object SparkRDD {
       val formatted: DataFrame = trimmed.select("ts","Beer Name", "percentage").distinct().sort("ts")
       formatted.show(5)
       val input = Vectors.dense(formatted.select("percentage").rdd.map(r => r(0).toString.toDouble).collect())
-      // TODO: Ensure input is not a singular matrix
-      val model = ARIMA.fitModel(1,0,1,input)
-      println("coefficients: "+ model.coefficients.mkString(","))
-      val predictions = model.forecast(input, 48)
-      println(predictions.toArray.toString)
+      if(input.toArray.distinct.length > 1) {
+        val model = ARIMA.fitModel(1, 0, 1, input)
+        println("coefficients: " + model.coefficients.mkString(","))
+        val predictions = model.forecast(input, 48)
+        println(predictions.toArray.toString)
+      }
+      else {
+        val name = formatted.select("Beer Name").collect().head.get(0)
+        println(name+" does not show suitable deviation")
+      }
       //Not saving predictions for now.
 //      val writeConfig = WriteConfig(Map("collection" -> formatted.first().getAs("Beer Name").toString.concat(" Predict"), "writeConcern.w" -> "majority"), Some(WriteConfig(sc)))
 //      MongoSpark.save(formatted, writeConfig)
