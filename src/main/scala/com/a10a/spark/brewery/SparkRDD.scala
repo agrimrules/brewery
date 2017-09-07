@@ -7,15 +7,16 @@ import com.mongodb.spark._
 import com.mongodb.spark.config.WriteConfig
 import org.apache.spark
 import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.Row
+import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
+import com.a10a.spark.brewery.utils.{getMongoConf, mapCategory}
 import org.apache.spark.sql.functions.concat
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.FloatType
+import org.bson.Document
 
 object SparkRDD {
   def main(args: Array[String]) = {
-      val (inmongo, outmongo) = utils.getMongoConf()
+      val (inmongo, outmongo) = getMongoConf()
       val sc = SparkSession.builder()
                   .master("local[8]")
                   .appName("Brewery")
@@ -38,16 +39,14 @@ object SparkRDD {
         val model = ARIMA.fitModel(1, 0, 1, train)
         println("coefficients: " + model.coefficients.mkString(","))
         val predictions = sc.sparkContext.parallelize(model.forecast(train, validate.size + 1).toArray.drop(0).toList)
-        val res = formatted.rdd.zip(predictions).map(r => Row.fromSeq(r._1.toSeq ++ Seq(r._2)))
-        val op = sc.createDataFrame(res, formatted.schema.add("prediction", FloatType))
+        val writeConfig = WriteConfig(Map("collection" -> formatted.first().getAs("Beer Name").toString.concat(" Predict"), "writeConcern.w" -> "majority"), Some(WriteConfig(sc)))
+        MongoSpark.save(predictions.map(r => Document.parse(s"{ percentage: ${r.toInt}}")), writeConfig)
       }
       else {
         val name = formatted.select("Beer Name").collect().head.get(0)
         println(name+" does not show suitable deviation")
       }
       //Not saving predictions for now.
-//      val writeConfig = WriteConfig(Map("collection" -> formatted.first().getAs("Beer Name").toString.concat(" Predict"), "writeConcern.w" -> "majority"), Some(WriteConfig(sc)))
-//      MongoSpark.save(formatted, writeConfig)
     })
 
     println("done")
