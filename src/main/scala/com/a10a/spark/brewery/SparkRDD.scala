@@ -8,7 +8,7 @@ import com.mongodb.spark.config.WriteConfig
 import org.apache.spark
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
-import com.a10a.spark.brewery.utils.{getMongoConf, mapCategory}
+import com.a10a.spark.brewery.utils.{getMongoConf}
 import org.apache.spark.sql.functions.concat
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.FloatType
